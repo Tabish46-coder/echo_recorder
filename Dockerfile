@@ -4,6 +4,9 @@ FROM python:3.9-slim
 # Set working directory
 WORKDIR /app
 
+# Upgrade pip
+RUN pip install --upgrade pip
+
 # Copy requirements file and install dependencies
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
