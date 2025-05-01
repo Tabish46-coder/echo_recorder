@@ -13,10 +13,9 @@ def normalize_audio_api():
         output_audio = BytesIO()
         normalize_audio(input_audio, output_audio)
         output_audio.seek(0)
-        return send_file(output_audio, as_attachment=True, download_name='normalized.mp3', mimetype='audio/mpeg')
+        return send_file(output_audio, as_attachment=True, download_name='normalized.wav', mimetype='audio/wav')
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 @app.route('/api/remove-echo', methods=['POST'])
 def remove_echo_api():
@@ -28,10 +27,9 @@ def remove_echo_api():
         output_audio = BytesIO()
         remove_echo(input_audio, output_audio)
         output_audio.seek(0)
-        return send_file(output_audio, as_attachment=True, download_name='echo_removed.mp3', mimetype='audio/mpeg')
+        return send_file(output_audio, as_attachment=True, download_name='echo_removed.wav', mimetype='audio/wav')
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 @app.route('/api/remove-background-noise', methods=['POST'])
 def remove_background_noise_api():
@@ -43,6 +41,6 @@ def remove_background_noise_api():
         output_audio = BytesIO()
         remove_background_noise(input_audio, output_audio)
         output_audio.seek(0)
-        return send_file(output_audio, as_attachment=True, download_name='cleaned.mp3', mimetype='audio/mpeg')
+        return send_file(output_audio, as_attachment=True, download_name='cleaned.wav', mimetype='audio/wav')
     except Exception as e:
         return jsonify({'error': str(e)}), 500

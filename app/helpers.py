@@ -5,33 +5,32 @@ from pydub import AudioSegment
 import noisereduce as nr
 
 def normalize_audio(input_io, output_io):
-    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_in:
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_in:
         temp_in.write(input_io.read())
         temp_input_path = temp_in.name
 
     try:
         audio = AudioSegment.from_file(temp_input_path)
-        normalized_audio = audio.normalize()
-        normalized_audio.export(output_io, format="mp3")
+        # Normalize using built-in method
+        normalized_audio = audio.apply_gain(-audio.max_dBFS)
+        normalized_audio.export(output_io, format="wav")
     finally:
         os.unlink(temp_input_path)
-
 
 def remove_echo(input_io, output_io):
-    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_in:
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_in:
         temp_in.write(input_io.read())
         temp_input_path = temp_in.name
 
     try:
         audio = AudioSegment.from_file(temp_input_path)
-        cleaned_audio = audio  # Placeholder: no actual echo cancellation
-        cleaned_audio.export(output_io, format="mp3")
+        cleaned_audio = audio  # Dummy echo logic; real implementation would require more DSP
+        cleaned_audio.export(output_io, format="wav")
     finally:
         os.unlink(temp_input_path)
 
-
 def remove_background_noise(input_io, output_io):
-    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_in:
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_in:
         temp_in.write(input_io.read())
         temp_input_path = temp_in.name
 
@@ -57,6 +56,6 @@ def remove_background_noise(input_io, output_io):
             channels=audio.channels
         )
 
-        cleaned_audio.export(output_io, format="mp3")
+        cleaned_audio.export(output_io, format="wav")
     finally:
         os.unlink(temp_input_path)
