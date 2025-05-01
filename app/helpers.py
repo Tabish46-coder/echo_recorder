@@ -1,55 +1,52 @@
-from pydub import AudioSegment,effects
-from pydub.effects import normalize
-import os
+from pydub import AudioSegment
 import subprocess
 import noisereduce as nr
 import numpy as np
+from io import BytesIO
+import tempfile
+import os
+
+def normalize_audio(input_io, output_io):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_in:
+        temp_in.write(input_io.read())
+        temp_in.flush()
+
+        temp_out = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+        temp_out.close()
+
+        cmd = [
+            'ffmpeg',
+            '-i', temp_in.name,
+            '-af', 'loudnorm=I=-16:TP=-2:LRA=7:measured_I=-23:measured_TP=-5:measured_LRA=14:measured_thresh=-35:offset=0.5:linear=true',
+            '-ar', '44100',
+            '-y',
+            temp_out.name
+        ]
+
+        try:
+            subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            with open(temp_out.name, 'rb') as f:
+                output_io.write(f.read())
+        finally:
+            os.unlink(temp_in.name)
+            os.unlink(temp_out.name)
 
 
-def normalize_audio(input_path, output_path):
-    cmd = [
-        'ffmpeg',
-        '-i', input_path,
-        '-af', 'loudnorm=I=-16:TP=-2:LRA=7:measured_I=-23:measured_TP=-5:measured_LRA=14:measured_thresh=-35:offset=0.5:linear=true',
-        '-ar', '44100',  # keep sampling rate consistent
-        '-y',  # overwrite output
-        output_path
-    ]
-
-    try:
-        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    except subprocess.CalledProcessError as e:
-        print("FFmpeg normalization failed:", e.stderr.decode())
-        raise
-
-    if not os.path.exists(output_path):
-        raise FileNotFoundError(f"Normalized file not found: {output_path}")
-
-
-def remove_echo(input_path, output_path):
-    # Example logic – replace with your actual echo removal process
-    audio = AudioSegment.from_file(input_path)
-
-    # Simulate echo removal (you can use noise reduction logic or convolution filters)
-    # For now, we just return the same audio
+def remove_echo(input_io, output_io):
+    audio = AudioSegment.from_file(input_io)
+    
+    # Apply echo removal logic here (placeholder: pass-through)
     cleaned_audio = audio
 
-    ext = output_path.rsplit('.', 1)[-1].lower()
-
-    if ext == "m4a":
-        cleaned_audio.export(output_path, format="ipod", codec="aac")
-    else:
-        cleaned_audio.export(output_path, format=ext)
+    cleaned_audio.export(output_io, format="mp3")
 
 
-
-
-def remove_background_noise(input_path, output_path):
-    audio = AudioSegment.from_file(input_path)
+def remove_background_noise(input_io, output_io):
+    audio = AudioSegment.from_file(input_io)
 
     samples = np.array(audio.get_array_of_samples())
 
-    # Handle stereo audio
+    # Stereo handling
     if audio.channels == 2:
         samples = samples.reshape((-1, 2))
         reduced = np.stack([
@@ -68,7 +65,4 @@ def remove_background_noise(input_path, output_path):
         channels=audio.channels
     )
 
-    # Export in original format (e.g., WAV or M4A depending on input)
-    ext = output_path.rsplit(".", 1)[-1].lower()
-    format_map = {"m4a": "ipod"}
-    cleaned_audio.export(output_path, format=format_map.get(ext, ext))
+    cleaned_audio.export(output_io, format="mp3")
