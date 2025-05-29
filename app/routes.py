@@ -11,18 +11,34 @@ CONVERTED_FOLDER = 'converted'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(CONVERTED_FOLDER, exist_ok=True)
 @app.route('/api/normalize-audio', methods=['POST'])
+from flask import request, jsonify, send_file
+from io import BytesIO
+
+@app.route('/normalize_audio', methods=['POST'])
 def normalize_audio_api():
     if 'file' not in request.files or request.files['file'].filename == '':
         return jsonify({'error': 'No file provided'}), 400
 
     try:
+        # Get normalization level (1 to 5)
+        level = request.form.get('level')
+        if not level or not level.isdigit() or int(level) not in range(1, 6):
+            return jsonify({'error': 'Normalization level must be a number from 1 to 5'}), 400
+
+        level = int(level)
+
         input_audio = BytesIO(request.files['file'].read())
         output_audio = BytesIO()
-        normalize_audio(input_audio, output_audio)
+
+        # Assuming your `normalize_audio` function takes a third parameter for intensity
+        normalize_audio(input_audio, output_audio, level)
         output_audio.seek(0)
+
         return send_file(output_audio, as_attachment=True, download_name='normalized.mp3', mimetype='audio/mpeg')
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 
 @app.route('/api/remove-echo', methods=['POST'])
