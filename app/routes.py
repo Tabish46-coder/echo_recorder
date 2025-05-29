@@ -15,10 +15,24 @@ def normalize_audio_api():
     if 'file' not in request.files or request.files['file'].filename == '':
         return jsonify({'error': 'No file provided'}), 400
 
+    # Get normalization level from form data or JSON
+    level = request.form.get('level') or request.json.get('level') if request.json else None
+    
+    # Validate level parameter
+    if level is None:
+        return jsonify({'error': 'Level parameter is required (1-5)'}), 400
+    
+    try:
+        level = int(level)
+        if level < 1 or level > 5:
+            return jsonify({'error': 'Level must be between 1 and 5'}), 400
+    except ValueError:
+        return jsonify({'error': 'Level must be a valid integer between 1 and 5'}), 400
+
     try:
         input_audio = BytesIO(request.files['file'].read())
         output_audio = BytesIO()
-        normalize_audio(input_audio, output_audio)
+        normalize_audio(input_audio, output_audio, level)
         output_audio.seek(0)
         return send_file(output_audio, as_attachment=True, download_name='normalized.mp3', mimetype='audio/mpeg')
     except Exception as e:
