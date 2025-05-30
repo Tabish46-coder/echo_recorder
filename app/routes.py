@@ -10,33 +10,42 @@ CONVERTED_FOLDER = 'converted'
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(CONVERTED_FOLDER, exist_ok=True)
-@app.route('/api/normalize-audio', methods=['POST'])
+@app.route("/api/normalize-audio", methods=["POST"])
 def normalize_audio_api():
-    if 'file' not in request.files or request.files['file'].filename == '':
-        return jsonify({'error': 'No file provided'}), 400
+    # 1️⃣ File field ---------------------------------------------------------
+    if "file" not in request.files or request.files["file"].filename == "":
+        return jsonify({"error": "No file provided"}), 400
+    audio_file = request.files["file"]
 
-    # Get normalization level from form data or JSON
-    level = request.form.get('level') or request.json.get('level') if request.json else None
-    
-    # Validate level parameter
+    # 2️⃣ Level field --------------------------------------------------------
+    level = request.form.get("level")             # multipart / form-data
+    if level is None and request.is_json:         # raw JSON body
+        level = request.get_json().get("level")
+
     if level is None:
-        return jsonify({'error': 'Level parameter is required (1-5)'}), 400
-    
+        return jsonify({"error": "Level parameter is required (1-5)"}), 400
+
     try:
         level = int(level)
-        if level < 1 or level > 5:
-            return jsonify({'error': 'Level must be between 1 and 5'}), 400
+        if not 1 <= level <= 5:
+            raise ValueError
     except ValueError:
-        return jsonify({'error': 'Level must be a valid integer between 1 and 5'}), 400
+        return jsonify({"error": "Level must be an integer between 1 and 5"}), 400
 
+    # 3️⃣ Normalise ----------------------------------------------------------
     try:
-        input_audio = BytesIO(request.files['file'].read())
+        input_audio  = BytesIO(audio_file.read())
         output_audio = BytesIO()
         normalize_audio(input_audio, output_audio, level)
         output_audio.seek(0)
-        return send_file(output_audio, as_attachment=True, download_name='normalized.mp3', mimetype='audio/mpeg')
+        return send_file(
+            output_audio,
+            as_attachment=True,
+            download_name="normalized.mp3",
+            mimetype="audio/mpeg",
+        )
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/remove-echo', methods=['POST'])
