@@ -26,13 +26,14 @@ def normalize_audio_api():
         return jsonify({"error": "Level parameter is required (1-5)"}), 400
 
     try:
-        level = int(level)
-        if not 1 <= level <= 5:
+        level = float(level)
+        if not level.is_integer() or not 1 <= level <= 5:
             raise ValueError
+        level = int(level)
     except ValueError:
-        return jsonify({"error": "Level must be an integer between 1 and 5"}), 400
+        return jsonify({"error": "Level must be a whole number between 1 and 5"}), 400
 
-    # 3️⃣ Normalise ----------------------------------------------------------
+    # 3️⃣ Normalize ----------------------------------------------------------
     try:
         input_audio  = BytesIO(audio_file.read())
         output_audio = BytesIO()
