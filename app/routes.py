@@ -3,7 +3,7 @@ import io
 from flask import request, jsonify, send_file
 from app import app
 from pydub import AudioSegment
-from app.helpers import normalize_audio, remove_echo, remove_background_noise
+from app.helpers import apply_volume, remove_echo, remove_background_noise
 import os
 UPLOAD_FOLDER = 'audio_files'
 CONVERTED_FOLDER = 'converted'
@@ -12,32 +12,32 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(CONVERTED_FOLDER, exist_ok=True)
 @app.route("/api/normalize-audio", methods=["POST"])
 def normalize_audio_api():
-    # 1️⃣ File field ---------------------------------------------------------
+    # ① File -------------------------------------------------------------------
     if "file" not in request.files or request.files["file"].filename == "":
         return jsonify({"error": "No file provided"}), 400
     audio_file = request.files["file"]
 
-    # 2️⃣ Level field --------------------------------------------------------
-    level = request.form.get("level")             # multipart / form-data
-    if level is None and request.is_json:         # raw JSON body
+    # ② Level (now 0-5) --------------------------------------------------------
+    level = request.form.get("level")
+    if level is None and request.is_json:
         level = request.get_json().get("level")
 
     if level is None:
-        return jsonify({"error": "Level parameter is required (1-5)"}), 400
+        return jsonify({"error": "Level parameter is required (0-5)"}), 400
 
     try:
         level = float(level)
-        if not level.is_integer() or not 1 <= level <= 5:
+        if not level.is_integer() or not 0 <= level <= 5:
             raise ValueError
         level = int(level)
     except ValueError:
-        return jsonify({"error": "Level must be a whole number between 1 and 5"}), 400
+        return jsonify({"error": "Level must be a whole number between 0 and 5"}), 400
 
-    # 3️⃣ Normalize ----------------------------------------------------------
+    # ③ Apply volume -----------------------------------------------------------
     try:
         input_audio  = BytesIO(audio_file.read())
         output_audio = BytesIO()
-        normalize_audio(input_audio, output_audio, level)
+        apply_volume(input_audio, output_audio, level)
         output_audio.seek(0)
         return send_file(
             output_audio,

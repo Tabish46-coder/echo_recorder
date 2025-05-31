@@ -5,40 +5,45 @@ import numpy as np
 from pydub import AudioSegment
 import noisereduce as nr
 
-def normalize_audio(input_io, output_io, level):
-    # Define normalization settings based on level (1-5)
-    normalization_settings = {
-        1: {'I': -23, 'TP': -3, 'LRA': 11},  # Light normalization
-        2: {'I': -20, 'TP': -2.5, 'LRA': 9}, # Mild normalization
-        3: {'I': -16, 'TP': -2, 'LRA': 7},   # Standard normalization
-        4: {'I': -14, 'TP': -1.5, 'LRA': 5}, # Strong normalization
-        5: {'I': -12, 'TP': -1, 'LRA': 3}    # Maximum normalization
+def apply_volume(input_io, output_io, level) -> None:
+    """Mute or amplify the whole track based on a 0-5 scale."""
+    volume_factors = {
+        0: 0,     # mute
+        1: 0.20,  # whisper-quiet
+        2: 0.40,
+        3: 0.70,
+        4: 1.00,  # original loudness
+        5: 3.00   # “extra loud” (≈ +6 dB)
     }
+    factor = volume_factors[level]
 
-    settings = normalization_settings.get(level, normalization_settings[3])
-
-    # Save input BytesIO to a temp file
+    # write the uploaded stream to a temp file …
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_in:
         temp_in.write(input_io.read())
         temp_input_path = temp_in.name
 
-    # Create an output temp file path
+    # prepare an output temp file for ffmpeg …
     temp_out = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
     temp_output_path = temp_out.name
-    temp_out.close()  # Close before FFmpeg uses it
+    temp_out.close()
 
     try:
-        cmd = [
-            'ffmpeg',
-            '-i', temp_input_path,
-            '-af', f'loudnorm=I={settings["I"]}:TP={settings["TP"]}:LRA={settings["LRA"]}',
-            '-ar', '44100',
-            '-y',
-            temp_output_path
-        ]
-        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-i", temp_input_path,
+                "-filter:a", f"volume={factor}",
+                "-ar", "44100",         # keep sample-rate consistent
+                "-y",                   # overwrite
+                temp_output_path,
+            ],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
 
-        with open(temp_output_path, 'rb') as f:
+        # send processed bytes back to the API
+        with open(temp_output_path, "rb") as f:
             output_io.write(f.read())
     finally:
         os.unlink(temp_input_path)
